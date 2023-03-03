@@ -1,0 +1,77 @@
+from typing import Optional
+
+def _get_genres_sql(load_from: Optional[str]) -> str:
+    """
+    Формирует sql для индекса genres
+    """
+    return f"""
+SELECT genre.id,
+    genre.name,
+    genre.updated_at
+FROM content.genre genre
+WHERE
+    genre.updated_at > '{load_from}'
+GROUP BY genre.id
+ORDER BY genre.updated_at ASC
+    """
+
+def _get_persons_sql(load_from: Optional[str]) -> str:
+    """
+    Формирует sql для индекса persons
+    """
+    return f"""
+SELECT person.id,
+    person.full_name AS name,
+    ARRAY_AGG(DISTINCT person_film.role::text) AS role,
+    ARRAY_AGG(DISTINCT person_film.film_work_id::text) AS film_ids,
+    person.updated_at
+FROM content.person person
+    LEFT JOIN content.person_film_work AS person_film ON person.id = person_film.person_id
+WHERE
+    person.updated_at > '{load_from}'
+GROUP BY person.id
+ORDER BY person.updated_at ASC
+    """
+
+def _get_movies_sql(load_from: Optional[str]) -> str:
+    """
+    Формирует sql для индекса movies
+    """
+    return f"""
+SELECT film.id,
+    film.rating AS imdb_rating,
+    film.title,
+    film.description,
+    film.file_path,
+    film.type,
+    ARRAY_AGG(DISTINCT jsonb_build_object('id', genre.id, 'name', genre.name)) AS genres,
+    ARRAY_AGG(DISTINCT jsonb_build_object('id', person.id, 'name', person.full_name)) FILTER (WHERE person_film.role = 'actor') AS actors,
+    ARRAY_AGG(DISTINCT jsonb_build_object('id', person.id, 'name', person.full_name)) FILTER (WHERE person_film.role = 'director') AS directors,
+    ARRAY_AGG(DISTINCT jsonb_build_object('id', person.id, 'name', person.full_name)) FILTER (WHERE person_film.role = 'writer') AS writers,
+    GREATEST(film.updated_at, MAX(person.updated_at), MAX(genre.updated_at)) AS updated_at
+FROM content.film_work film
+    LEFT JOIN content.genre_film_work AS genre_film ON film.id = genre_film.film_work_id
+    LEFT JOIN content.genre AS genre ON genre_film.genre_id = genre.id
+    LEFT JOIN content.person_film_work AS person_film ON film.id = person_film.film_work_id
+    LEFT JOIN content.person AS person ON person_film.person_id = person.id
+WHERE
+    GREATEST(film.updated_at, person.updated_at, genre.updated_at) > '{load_from}'
+GROUP BY film.id
+ORDER BY GREATEST(film.updated_at, MAX(person.updated_at), MAX(genre.updated_at)) ASC
+    """
+
+
+def get_query_by_index(index: str, load_from: Optional[str]) -> str:
+    """Формирует sql запрос в зависимости от индекса"""
+
+    if not load_from:
+        raise ValueError("Datetime string required")
+
+    elif index == "movies":
+        return _get_movies_sql(load_from)
+    elif index == "genres":
+        return _get_genres_sql(load_from)
+    elif index == "persons":
+        return _get_persons_sql(load_from)
+
+    raise ValueError(f"No sql for index {index}")
