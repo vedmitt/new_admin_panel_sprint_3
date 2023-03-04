@@ -7,18 +7,17 @@ services:
       dockerfile: Dockerfile
       args:
         DISCOVERY_TYPE: single-node
-    ports:
-      - '9200:9200'
     volumes:
       - elasticdata:/usr/share/elasticsearch/data
 
   redis:
     image: redis:6-alpine
     restart: always
+    build:
+      context: .
+      dockerfile: ./docker/redis/Dockerfile
     volumes:
       - redisdata:/data
-    ports:
-      - '6379:6379'
 
   etl:
     image: python:3.10
@@ -30,7 +29,7 @@ services:
       - elasticsearch
       - redis
     env_file:
-      - ./config/.env
+      - .env
     command: python main.py
 
 

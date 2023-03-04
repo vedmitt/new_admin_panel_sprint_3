@@ -1,8 +1,6 @@
 elasticsearch==8.6
-psycopg2-binary
+psycopg2-binary==2.9
 python-dotenv==0.21
-pydantic
-backoff
-# backoff==1.11
-backoff-utils
+pydantic==1.10
+backoff==2.2
 redis==4.5

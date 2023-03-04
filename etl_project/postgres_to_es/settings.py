@@ -1,8 +1,5 @@
 import logging
-from typing import List
-from dotenv import load_dotenv
-
-load_dotenv("./.env")
+from typing import List, Optional
 
 import backoff
 from pydantic import BaseSettings, Field
@@ -34,6 +31,7 @@ class AppConfig(BaseSettings):
     frequency: int = Field(..., env="FREQUENCY")
     backoff_max_retries: int = Field(..., env="BACKOFF_MAX_RETRIES")
     elastic_indexes: List[str] = Field(..., env="ES_INDEXES")
+    logging_level: int = Field(..., env="LOG_LEVEL")
 
 
 APP_CONFIG = AppConfig()
@@ -51,7 +49,7 @@ BACKOFF_CONFIG = {
 LOGGER_SETTINGS = {
     "format": "%(asctime)s - %(name)s.%(funcName)s:%(lineno)d - %(levelname)s - %(message)s",  # noqa 501
     "datefmt": "%Y-%m-%d %H:%M:%S",
-    "level": logging.INFO,
+    "level": APP_CONFIG.logging_level,
     "handlers": [logging.StreamHandler()],
 }
 
